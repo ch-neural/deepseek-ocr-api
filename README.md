@@ -92,7 +92,21 @@ huggingface-cli login
 
 輸入您的 Hugging Face Token（在 https://huggingface.co/settings/tokens 獲取）
 
-#### 3️⃣ 一鍵啟動
+#### 3️⃣ 建立虛擬環境並安裝依賴
+
+```bash
+# 建立虛擬環境
+python -m venv .venv
+source .venv/bin/activate
+
+# 安裝 PyTorch（CUDA 11.8 版本）
+pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu118
+
+# 安裝其他依賴
+pip install -r requirements.txt
+```
+
+#### 4️⃣ 啟動服務
 
 ```bash
 chmod +x start_server.sh
@@ -100,12 +114,13 @@ chmod +x start_server.sh
 ```
 
 腳本會自動：
-- ✅ 建立虛擬環境
-- ✅ 安裝所有依賴（包括 Unsloth）
-- ✅ 下載 DeepSeek-OCR 模型
+- ✅ 偵測 Unsloth 是否可用
+- ✅ 若 Unsloth 可用，使用加速版本（`app.py`）
+- ✅ 若 Unsloth 不可用，使用標準版本（`app_standard.py`）
+- ✅ 首次執行時自動下載 DeepSeek-OCR 模型
 - ✅ 啟動 Flask 開發伺服器
 
-#### 4️⃣ 存取服務
+#### 5️⃣ 存取服務
 
 - **Web UI**：http://localhost:5000
 - **API 端點**：http://localhost:5000/ocr
@@ -149,8 +164,8 @@ curl http://localhost:5000/health
 ```json
 {
   "status": "healthy",
-  "model": "DeepSeek-OCR",
-  "timestamp": "2025-11-10T15:30:45"
+  "service": "DeepSeek-OCR API (Standard Transformers)",
+  "timestamp": "2025-11-10T15:30:45.123456"
 }
 ```
 
@@ -164,10 +179,16 @@ curl -X POST http://localhost:5000/ocr \
 **回應範例**：
 ```json
 {
-  "success": true,
   "text": "這是圖片中的文字內容",
-  "filename": "image.png",
-  "timestamp": "2025-11-10T15:31:20"
+  "image_path": "uploads/20251201_130224_image.png",
+  "processing_time": 45.67,
+  "gpu_memory": {
+    "available": true,
+    "total_mb": 24122.19,
+    "used_mb": 6490.0,
+    "free_mb": 17632.19,
+    "usage_percent": 26.9
+  }
 }
 ```
 
@@ -191,22 +212,23 @@ curl -X POST http://localhost:5000/ocr/batch \
 **回應範例**：
 ```json
 {
-  "success": true,
   "results": [
     {
-      "filename": "image1.png",
       "text": "第一張圖片的文字",
-      "success": true
+      "image_path": "uploads/20251201_130224_0_image1.png",
+      "processing_time": 45.67
     },
     {
-      "filename": "image2.png",
       "text": "第二張圖片的文字",
-      "success": true
+      "image_path": "uploads/20251201_130224_1_image2.png",
+      "processing_time": 38.21
+    },
+    {
+      "error": "OCR 處理失敗",
+      "image_path": "uploads/20251201_130224_2_image3.png"
     }
   ],
-  "total": 3,
-  "successful": 2,
-  "failed": 1
+  "total": 3
 }
 ```
 
@@ -282,21 +304,29 @@ export MAX_CONTENT_LENGTH="16777216"  # 16MB
 
 ### 效能調校
 
-修改 `config.py` 來調整推理參數：
+修改 `config.py` 或透過環境變數來調整推理參數：
 
 ```python
 class Config:
     # 上傳檔案大小限制
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
     
-    # OCR 設定
-    OCR_BASE_SIZE = 1024  # 圖片處理基準大小
-    OCR_IMAGE_SIZE = 640  # 實際推理大小
-    OCR_CROP_MODE = True  # 是否啟用裁切模式
+    # OCR 設定（可透過環境變數覆蓋）
+    OCR_BASE_SIZE = int(os.environ.get('OCR_BASE_SIZE', '1024'))   # 圖片處理基準大小
+    OCR_IMAGE_SIZE = int(os.environ.get('OCR_IMAGE_SIZE', '640'))  # 實際推理大小
+    OCR_CROP_MODE = True   # 是否啟用裁切模式
     
     # 預設提示詞
-    DEFAULT_PROMPT = "OCR: "
+    OCR_DEFAULT_PROMPT = "<image>\nFree OCR."
 ```
+
+**效能模式建議**：
+
+| 模式 | OCR_BASE_SIZE | OCR_IMAGE_SIZE | 處理時間 | 準確度 |
+|------|---------------|----------------|----------|--------|
+| 快速 | 1024 | 640 | ~10-30 秒 | 中等 |
+| 平衡（推薦） | 2048 | 1024 | ~30-60 秒 | 高 |
+| 高品質 | 2048 | 1280 | ~60-120 秒 | 極高 |
 
 ---
 
@@ -353,12 +383,14 @@ python test_api.py
 ## 📁 專案結構
 
 ```
-Deepseek-OCR/
-├── app.py                      # Flask 主應用程式
-├── ocr_service.py              # DeepSeek-OCR 服務封裝
+deepseek-ocr-api/
+├── app.py                      # Flask 主應用程式（Unsloth 版本）
+├── app_standard.py             # Flask 主應用程式（標準 Transformers 版本）
+├── ocr_service.py              # DeepSeek-OCR 服務封裝（Unsloth 版本）
+├── ocr_service_standard.py     # DeepSeek-OCR 服務封裝（標準版本）
 ├── config.py                   # 配置設定
 ├── requirements.txt            # Python 依賴
-├── start_server.sh             # 開發伺服器啟動腳本
+├── start_server.sh             # 開發伺服器啟動腳本（自動偵測 Unsloth）
 ├── start_production.sh         # 生產伺服器啟動腳本
 ├── test_api.py                 # API 測試腳本
 ├── INSTALL.md                  # 安裝指南
@@ -375,11 +407,21 @@ Deepseek-OCR/
 │   ├── GPU_SETUP.md
 │   ├── HUGGINGFACE_AUTH.md
 │   ├── MODULE_ERROR.md
-│   └── QUICK_START.md
+│   ├── QUICK_START.md
+│   └── UNSLOTH_INSTALL_ISSUE.md
 ├── uploads/                    # 上傳檔案暫存
 ├── logs/                       # 應用程式日誌
 └── deepseek_ocr/              # DeepSeek-OCR 模型 (自動下載)
 ```
+
+### 版本說明
+
+| 文件 | 說明 |
+|------|------|
+| `app.py` + `ocr_service.py` | **Unsloth 版本**：推理速度快（10-30 秒），但需要安裝 Unsloth |
+| `app_standard.py` + `ocr_service_standard.py` | **標準版本**：推理較慢（60-120 秒），但穩定性高，無需額外依賴 |
+
+`start_server.sh` 會自動偵測 Unsloth 是否可用，並選擇合適的版本啟動。
 
 ---
 
