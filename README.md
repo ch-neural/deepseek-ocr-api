@@ -77,7 +77,7 @@ Unsloth 是一個專為 LLM 和視覺語言模型優化的推理加速框架，�
 #### 1️⃣ 克隆專案
 
 ```bash
-git clone https://github.com/你的帳號/Deepseek-OCR.git
+git clone https://github.com/ch-neural/deepseek-ocr-api
 cd Deepseek-OCR
 ```
 
