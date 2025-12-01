@@ -136,10 +136,33 @@ class DeepSeekOCRService:
         else:
             print("⚠️  警告: GPU 不可用，將使用 CPU（速度會很慢）")
         
+        # 決定從哪裡載入模型（本地目錄或 Hugging Face Hub）
+        # 檢查本地目錄是否存在且包含必要文件
+        model_source = model_dir
+        if os.path.exists(model_dir) and os.path.isfile(os.path.join(model_dir, "config.json")):
+            print(f"✅ 使用本地模型目錄: {model_dir}")
+            model_source = model_dir
+        else:
+            print(f"⚠️  本地目錄 {model_dir} 不存在或不完整")
+            print(f"   將從 Hugging Face Hub 下載模型: {model_name}")
+            model_source = model_name
+            
+            # 自動下載模型到本地目錄
+            print(f"   正在下載模型到 {model_dir}...")
+            from huggingface_hub import snapshot_download
+            try:
+                snapshot_download(model_name, local_dir=model_dir)
+                model_source = model_dir
+                print(f"✅ 模型下載完成: {model_dir}")
+            except Exception as e:
+                print(f"❌ 模型下載失敗: {e}")
+                print(f"   將嘗試直接從 Hugging Face Hub 載入")
+                model_source = model_name
+        
         # 載入 tokenizer
         print("載入 tokenizer...")
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model_dir,
+            model_source,
             trust_remote_code=True
         )
         
@@ -159,7 +182,7 @@ class DeepSeekOCRService:
             load_kwargs["torch_dtype"] = torch.float32
         
         # 先載入模型到 CPU，再手動移動到 GPU（避免 device_map 的問題）
-        self.model = AutoModel.from_pretrained(model_dir, **load_kwargs)
+        self.model = AutoModel.from_pretrained(model_source, **load_kwargs)
         
         # 手動移動到指定設備
         if torch.cuda.is_available():
