@@ -112,22 +112,15 @@ def perform_ocr():
     
     # 執行 OCR
     print(f"開始執行 OCR 辨識: {filepath}")
+    print("⚠️  注意：標準 Transformers 版本的推理時間可能較長（約 60-120 秒）")
+    print("   建議使用 Unsloth 版本以獲得更快的推理速度（約 10-30 秒）")
     
-    # 執行 OCR 並捕獲可能的錯誤（包括超時錯誤）
+    # 執行 OCR 並捕獲可能的錯誤
     result = None
     error_info = None
-    from concurrent.futures import TimeoutError as FuturesTimeoutError
     
     try:
         result = ocr_service.perform_ocr(filepath, custom_prompt)
-    except FuturesTimeoutError as timeout_err:
-        error_info = f"OCR 處理超時 (超過 {ocr_service.ocr_timeout} 秒)，請嘗試使用更小的圖片或增加超時設定"
-        print(f"======== OCR 超時錯誤 ========")
-        print(f"錯誤類型: TimeoutError")
-        print(f"錯誤訊息: {error_info}")
-        print(f"圖片路徑: {filepath}")
-        print(f"超時設定: {ocr_service.ocr_timeout} 秒")
-        print(f"============================")
     except Exception as general_err:
         error_info = f"OCR 處理發生錯誤: {str(general_err)}"
         print(f"======== OCR 執行錯誤 ========")

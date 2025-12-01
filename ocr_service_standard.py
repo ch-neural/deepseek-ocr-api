@@ -219,30 +219,40 @@ class DeepSeekOCRService:
         output_dir = tempfile.mkdtemp(prefix="ocr_output_")
         os.makedirs(output_dir, exist_ok=True)
         
-        # 使用模型的 infer 方法
+        result = None
+        ocr_output = ""
+        
+        # 嘗試使用模型的 infer 方法
         try:
-            # 執行推理 - 設定 eval_mode=True 以獲取返回值
-            result = self.model.infer(
-                self.tokenizer,
-                prompt=prompt,
-                image_file=image_path,
-                output_path=output_dir,
-                base_size=self.base_size,
-                image_size=self.image_size,
-                crop_mode=self.crop_mode,
-                save_results=False,
-                test_compress=self.test_compress,
-                eval_mode=True  # 使用 eval 模式返回結果
-            )
+            # 檢查模型是否有 infer 方法
+            if hasattr(self.model, 'infer'):
+                print("使用模型的 infer 方法...")
+                # 執行推理 - 設定 eval_mode=True 以獲取返回值
+                result = self.model.infer(
+                    self.tokenizer,
+                    prompt=prompt,
+                    image_file=image_path,
+                    output_path=output_dir,
+                    base_size=self.base_size,
+                    image_size=self.image_size,
+                    crop_mode=self.crop_mode,
+                    save_results=False,
+                    test_compress=self.test_compress,
+                    eval_mode=True  # 使用 eval 模式返回結果
+                )
+            else:
+                # 如果沒有 infer 方法，使用手動推理
+                print("模型沒有 infer 方法，使用手動推理...")
+                result = self._manual_inference(image_path, prompt)
             
         except Exception as e:
+            print(f"推理發生錯誤: {e}")
             # 清理臨時目錄
             import shutil
             shutil.rmtree(output_dir, ignore_errors=True)
             raise e
         
         # 從輸出目錄讀取結果
-        ocr_output = ""
         try:
             # 查找輸出的文字檔案
             for filename in os.listdir(output_dir):
@@ -262,12 +272,7 @@ class DeepSeekOCRService:
         shutil.rmtree(output_dir, ignore_errors=True)
         
         elapsed_time = time.time() - start_time
-        print(f"模型推理完成")
-        
-        # 詳細日誌：記錄推理結果
-        print(f"推理返回值類型: {type(result)}")
-        print(f"推理返回值內容: {result}")
-        print(f"從檔案讀取的輸出長度: {len(ocr_output) if ocr_output else 0}")
+        print(f"模型推理完成，耗時: {elapsed_time:.2f} 秒")
         
         # 提取 OCR 文字
         ocr_text = None
@@ -289,12 +294,71 @@ class DeepSeekOCRService:
             ocr_text = result['text']
             print(f"使用方法 4: 從 dict 提取，長度: {len(ocr_text) if ocr_text else 0}")
         
+        # 後處理：檢測並移除重複內容
+        if ocr_text:
+            ocr_text = self._remove_repetition(ocr_text)
+        
         return ocr_text if ocr_text else ""
     
-    @with_timeout(300)  # 使用裝飾器設定超時
+    def _remove_repetition(self, text):
+        """
+        移除 OCR 結果中的重複內容（模型幻覺）
+        
+        Args:
+            text: OCR 輸出文字
+            
+        Returns:
+            str: 清理後的文字
+        """
+        if not text or len(text) < 100:
+            return text
+        
+        # 檢測重複模式
+        # 將文字按空格分割
+        words = text.split()
+        if len(words) < 10:
+            return text
+        
+        # 檢測連續重複的詞組
+        cleaned_words = []
+        repeat_count = 0
+        max_repeats = 3  # 允許最多重複 3 次
+        
+        for i, word in enumerate(words):
+            # 檢查是否與前幾個詞重複
+            is_repeat = False
+            if len(cleaned_words) >= 1:
+                # 檢查單詞重複
+                if word == cleaned_words[-1]:
+                    repeat_count += 1
+                    if repeat_count > max_repeats:
+                        is_repeat = True
+                else:
+                    repeat_count = 0
+            
+            if not is_repeat:
+                cleaned_words.append(word)
+        
+        cleaned_text = ' '.join(cleaned_words)
+        
+        # 如果清理後的文字長度小於原文的 20%，可能清理過度，返回原文的前半部分
+        if len(cleaned_text) < len(text) * 0.2:
+            # 找到第一個明顯重複的位置
+            half_len = len(text) // 2
+            for i in range(100, half_len):
+                chunk = text[i:i+50]
+                if text.count(chunk) > 3:
+                    return text[:i].strip()
+            return text[:half_len].strip()
+        
+        return cleaned_text
+    
     def perform_ocr(self, image_path, custom_prompt=None):
         """
         執行 OCR 辨識
+        
+        注意：標準 Transformers 版本的推理時間可能較長（約 60-120 秒）
+        建議使用 Unsloth 版本以獲得更快的推理速度（約 10-30 秒）
         
         Args:
             image_path: 圖片路徑
