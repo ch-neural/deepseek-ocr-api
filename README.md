@@ -136,19 +136,26 @@ chmod +x start_server.sh
 | 文檔 | 說明 |
 |------|------|
 | [INSTALL.md](INSTALL.md) | 詳細安裝指南 |
-| [docs/DEEPSEEK_OCR_TECHNICAL_GUIDE.md](docs/DEEPSEEK_OCR_TECHNICAL_GUIDE.md) | 深入淺出的技術文件 |
-| [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) | 快速參考指南 |
-| [README/API_DOCUMENTATION.md](README/API_DOCUMENTATION.md) | API 完整文檔 |
 | [README/QUICK_START.md](README/QUICK_START.md) | 快速開始指南 |
+| [README/API_DOCUMENTATION.md](README/API_DOCUMENTATION.md) | API 完整文檔 |
+| [README/OCR_GUIDE.md](README/OCR_GUIDE.md) | OCR 配置與使用指南 |
 
 ### 🔧 故障排除
 
 | 文檔 | 說明 |
 |------|------|
 | [README/ERROR_MESSAGES.md](README/ERROR_MESSAGES.md) | 常見錯誤訊息及解決方法 |
-| [README/GPU_SETUP.md](README/GPU_SETUP.md) | GPU 驅動和 CUDA 設定 |
+| [README/GPU_TROUBLESHOOTING.md](README/GPU_TROUBLESHOOTING.md) | GPU 問題排除指南 |
+| [README/INSTALLATION_ISSUES.md](README/INSTALLATION_ISSUES.md) | 安裝問題排除指南 |
 | [README/HUGGINGFACE_AUTH.md](README/HUGGINGFACE_AUTH.md) | Hugging Face 認證問題 |
-| [README/MODULE_ERROR.md](README/MODULE_ERROR.md) | 模組匯入錯誤解決 |
+
+### 📘 技術深入
+
+| 文檔 | 說明 |
+|------|------|
+| [docs/DEEPSEEK_OCR_TECHNICAL_GUIDE.md](docs/DEEPSEEK_OCR_TECHNICAL_GUIDE.md) | 深入淺出的技術文件 |
+| [docs/DEEPSEEK_VL2_OCR_RELATIONSHIP.md](docs/DEEPSEEK_VL2_OCR_RELATIONSHIP.md) | DeepSeek-VL2 與 OCR 的關係 |
+| [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) | 快速參考指南 |
 
 ---
 
