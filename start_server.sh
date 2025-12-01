@@ -15,20 +15,19 @@ echo "====================================="
 
 # 檢查是否已在虛擬環境中
 if [ -z "$VIRTUAL_ENV" ]; then
-    # 嘗試使用預設的虛擬環境
-    if [ -d "/home/chtseng/envs/DEEPSEEK-OCR" ]; then
-        echo "正在啟動虛擬環境..."
-        source /home/chtseng/envs/DEEPSEEK-OCR/bin/activate
-    elif [ -d "/home/chtseng/envs/DP-OCR" ]; then
-        echo "正在啟動虛擬環境..."
-        source /home/chtseng/envs/DP-OCR/bin/activate
-    elif [ -d ".venv" ]; then
+    # 嘗試使用本地虛擬環境
+    if [ -d ".venv" ]; then
         echo "正在啟動本地虛擬環境..."
         source .venv/bin/activate
+    elif [ -d "venv" ]; then
+        echo "正在啟動本地虛擬環境..."
+        source venv/bin/activate
     else
         echo "⚠️  警告: 未偵測到虛擬環境"
-        echo "請先建立或啟動虛擬環境，例如："
-        echo "  source /home/chtseng/envs/DEEPSEEK-OCR/bin/activate"
+        echo "請先建立虛擬環境，例如："
+        echo "  python -m venv .venv"
+        echo "  source .venv/bin/activate"
+        echo "  pip install -r requirements.txt"
         exit 1
     fi
 fi

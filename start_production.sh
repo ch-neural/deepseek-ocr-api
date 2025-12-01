@@ -11,13 +11,15 @@ source .env 2>/dev/null || true
 
 # 檢查是否已在虛擬環境中
 if [ -z "$VIRTUAL_ENV" ]; then
-    # 嘗試使用預設的虛擬環境
-    if [ -d "/home/chtseng/envs/DP-OCR" ]; then
-        source /home/chtseng/envs/DP-OCR/bin/activate
-    elif [ -d ".venv" ]; then
+    # 嘗試使用本地虛擬環境
+    if [ -d ".venv" ]; then
         source .venv/bin/activate
+    elif [ -d "venv" ]; then
+        source venv/bin/activate
     else
-        echo "❌ 請先啟動虛擬環境"
+        echo "❌ 請先建立並啟動虛擬環境"
+        echo "   python -m venv .venv"
+        echo "   source .venv/bin/activate"
         exit 1
     fi
 fi
