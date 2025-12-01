@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek-OCR 圖片文字辨識</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .preview-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-text {
+            background: #f8f9ff;
+            border: 1px solid #e0e4ff;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 200px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .success {
+            color: #0a0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .button-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .button-secondary:hover {
+            background: #f8f9ff;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #667eea;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐳 DeepSeek-OCR</h1>
+            <p>強大的圖片文字辨識服務 - 支援中文、英文、表格、手寫文字</p>
+        </div>
+
+        <div class="card">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📷</div>
+                <div class="upload-text">點擊或拖曳圖片到這裡</div>
+                <div class="upload-hint">支援 PNG, JPG, JPEG, GIF, BMP, WEBP（最大 16MB）</div>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+
+            <div class="preview-section" id="previewSection">
+                <h3>預覽圖片</h3>
+                <img id="previewImage" class="preview-image" alt="預覽">
+                <div class="button-group">
+                    <button class="button" id="ocrButton">開始辨識</button>
+                    <button class="button button-secondary" id="clearButton">清除</button>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在辨識中，請稍候...</p>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="result-section" id="resultSection">
+                <div class="result-title">
+                    <span>✅</span>
+                    <span>辨識結果</span>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-label">辨識字數</div>
+                        <div class="stat-value" id="charCount">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">處理時間</div>
+                        <div class="stat-value" id="processTime">0s</div>
+                    </div>
+                </div>
+                <div class="result-text" id="resultText"></div>
+                <div class="button-group">
+                    <button class="button" id="copyButton">複製文字</button>
+                    <button class="button button-secondary" id="downloadButton">下載文字檔</button>
+                    <button class="button button-secondary" id="newButton">辨識新圖片</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const previewImage = document.getElementById('previewImage');
+        const ocrButton = document.getElementById('ocrButton');
+        const clearButton = document.getElementById('clearButton');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const resultSection = document.getElementById('resultSection');
+        const resultText = document.getElementById('resultText');
+        const charCount = document.getElementById('charCount');
+        const processTime = document.getElementById('processTime');
+        const copyButton = document.getElementById('copyButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const newButton = document.getElementById('newButton');
+
+        let selectedFile = null;
+        let ocrResult = '';
+
+        // 點擊上傳區域
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 檔案選擇
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // 拖曳上傳
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        // 處理檔案
+        function handleFile(file) {
+            if (!file) return;
+
+            // 檢查檔案類型
+            if (!file.type.startsWith('image/')) {
+                showError('請選擇圖片檔案');
+                return;
+            }
+
+            // 檢查檔案大小
+            if (file.size > 16 * 1024 * 1024) {
+                showError('檔案過大，最大允許 16MB');
+                return;
+            }
+
+            selectedFile = file;
+
+            // 顯示預覽
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewSection.style.display = 'block';
+                resultSection.style.display = 'none';
+                error.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 開始辨識
+        ocrButton.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const startTime = Date.now();
+
+            // 顯示載入中
+            loading.style.display = 'block';
+            resultSection.style.display = 'none';
+            error.style.display = 'none';
+
+            // 準備表單資料
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                // 發送請求
+                const response = await fetch('/ocr', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // 成功
+                    ocrResult = result.text;
+                    const endTime = Date.now();
+                    const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+                    // 顯示結果
+                    resultText.textContent = ocrResult;
+                    charCount.textContent = ocrResult.length;
+                    processTime.textContent = duration + 's';
+
+                    loading.style.display = 'none';
+                    resultSection.style.display = 'block';
+                } else {
+                    // 錯誤
+                    showError(result.error || '辨識失敗，請重試');
+                    loading.style.display = 'none';
+                }
+            } catch (err) {
+                showError('網路錯誤，請檢查伺服器是否正常運行');
+                loading.style.display = 'none';
+            }
+        });
+
+        // 清除
+        clearButton.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            previewSection.style.display = 'none';
+            resultSection.style.display = 'none';
+            error.style.display = 'none';
+        });
+
+        // 複製文字
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(ocrResult).then(() => {
+                const originalText = copyButton.textContent;
+                copyButton.textContent = '✓ 已複製';
+                setTimeout(() => {
+                    copyButton.textContent = originalText;
+                }, 2000);
+            });
+        });
+
+        // 下載文字檔
+        downloadButton.addEventListener('click', () => {
+            const blob = new Blob([ocrResult], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ocr_result.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // 辨識新圖片
+        newButton.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            previewSection.style.display = 'none';
+            resultSection.style.display = 'none';
+            error.style.display = 'none';
+        });
+
+        // 顯示錯誤
+        function showError(message) {
+            error.textContent = '❌ ' + message;
+            error.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
+

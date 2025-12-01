@@ -1,0 +1,74 @@
+# DeepSeek-OCR 依賴套件
+# 測試環境：Python 3.10, CUDA 11.8, RTX 3090 (24GB)
+# 最後測試日期：2025-11-30
+
+# ==================== 核心依賴（精確版本）====================
+
+# Flask Web 框架
+Flask==3.1.2
+Werkzeug>=3.0.1
+
+# PyTorch（需與 CUDA 版本匹配）
+# 安裝命令（CUDA 11.8）：
+#   pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu118
+torch==2.7.1
+torchvision==0.22.1
+torchaudio==2.7.1
+
+# Transformers（重要：使用此精確版本）
+# - 4.56.2 已測試可正常運作
+# - 過新的版本可能導致 CUDA mask 錯誤
+transformers==4.56.2
+tokenizers==0.22.1
+
+# Accelerate（模型載入加速）
+accelerate==1.11.0
+
+# Hugging Face Hub（模型下載）
+huggingface-hub==0.36.0
+
+# ==================== 圖片處理 ====================
+
+Pillow>=10.0.0
+opencv-python>=4.8.0
+
+# ==================== DeepSeek-OCR 模型依賴 ====================
+
+einops==0.8.1
+timm>=0.9.0
+easydict>=1.10
+addict>=2.4.0
+matplotlib>=3.7.0
+
+# ==================== 安裝說明 ====================
+#
+# 步驟 1：建立虛擬環境
+#   python -m venv ~/envs/DP-OCR
+#   source ~/envs/DP-OCR/bin/activate
+#
+# 步驟 2：安裝 PyTorch（CUDA 11.8）
+#   pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu118
+#
+# 步驟 3：安裝其他依賴
+#   pip install -r requirements.txt
+#
+# 步驟 4：啟動服務
+#   python app_standard.py
+#
+# ==================== 已知問題與解決方案 ====================
+#
+# 問題 1：CUDA mask 錯誤 (device-side assert triggered)
+#   原因：transformers 版本過新
+#   解決：pip install transformers==4.56.2
+#
+# 問題 2：GPU 記憶體不足 (OOM)
+#   解決：設定環境變數
+#     export OCR_BASE_SIZE=1024
+#     export OCR_IMAGE_SIZE=640
+#
+# 問題 3：多 GPU 設備錯誤
+#   解決：程式碼已自動處理，強制使用 cuda:0
+#
+# 問題 4：Unsloth 無法載入
+#   解決：使用標準版本 python app_standard.py
+#
